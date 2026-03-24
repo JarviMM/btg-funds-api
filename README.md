@@ -12,7 +12,7 @@ API REST desarrollada con Spring Boot que permite a los clientes gestionar sus f
 - Gradle 8.7
 - JUnit 5 + Mockito
 
-> Se eligió SQLite para simplificar la ejecución local sin necesidad de instalar una base de datos externa. Para producción se recomienda migrar a DynamoDB o MongoDB.
+> Se eligió SQLite para simplificar la ejecución local sin necesidad de instalar una base de datos externa.
 
 ## Arquitectura
 
