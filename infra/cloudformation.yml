@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: BTG Funds API - Despliegue en EC2
+
+Parameters:
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Nombre del Key Pair para acceso SSH
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t3.micro, t3.small, t4g.micro]
+    Description: Tipo de instancia EC2
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: Clave secreta para JWT (base64)
+    Default: dGhpcyBpcyBhIHNlY3VyZSBrZXkgZm9yIGJ0ZyBmdW5kcyBhcGkgand0IHRva2Vu
+
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Acceso SSH y puerto 8080 para la API
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+      ImageId: ami-0c421724a94bba6d6  # Amazon Linux 2023 (us-east-1)
+      SecurityGroups:
+        - !Ref SecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf update -y
+          dnf install -y java-17-amazon-corretto git
+          cd /home/ec2-user
+          git clone https://github.com/JarviMM/btg-funds-api.git
+          cd btg-funds-api
+          chmod +x gradlew
+          # Configurar JWT secret
+          sed -i "s|jwt.secret=.*|jwt.secret=${JwtSecret}|" src/main/resources/application.properties
+          ./gradlew build -x test
+          nohup java -jar build/libs/btg-funds-api-1.0.0.jar --server.port=8080 &
+      Tags:
+        - Key: Name
+          Value: BTG-Funds-API
+
+Outputs:
+  PublicIP:
+    Description: IP pública de la instancia
+    Value: !GetAtt EC2Instance.PublicIp
+  ApplicationURL:
+    Description: URL de la API
+    Value: !Sub http://${EC2Instance.PublicIp}:8080
